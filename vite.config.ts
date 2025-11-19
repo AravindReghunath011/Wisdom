@@ -27,9 +27,12 @@ export default defineConfig(async () => {
     },
   },
     root: path.resolve(__dirname, "client"),
+    // the outdir is changed from dist/public to client/dist
   build: {
-      outDir: path.resolve(__dirname, "dist/public"),
+      outDir: path.resolve(__dirname, "client/dist"),
     emptyOutDir: true,
   },
   };
 });
+
+
