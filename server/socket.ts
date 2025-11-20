@@ -109,6 +109,7 @@ const gameSessions: Map<
     teams?: any[];
     category?: string;
     difficulty?: string;
+    questionTimeout?: NodeJS.Timeout;
   }
 > = new Map();
 
@@ -3630,6 +3631,11 @@ function sendTeamBattleQuestion(gameId: string) {
     return;
   }
 
+  if (gameSession.questionTimeout) {
+    clearTimeout(gameSession.questionTimeout);
+    gameSession.questionTimeout = undefined;
+  }
+
   // Send question to all team members
   const gameClients = Array.from(clients.values()).filter(
     (c) => c.gameId === gameId
@@ -3650,8 +3656,7 @@ function sendTeamBattleQuestion(gameId: string) {
     }
   }
 
-  // Set timer for question timeout
-  setTimeout(() => {
+  gameSession.questionTimeout = setTimeout(() => {
     processTeamBattleAnswers(gameId);
   }, 30000);
 }
@@ -3659,6 +3664,11 @@ function sendTeamBattleQuestion(gameId: string) {
 async function processTeamBattleAnswers(gameId: string) {
   const gameSession = gameSessions.get(gameId);
   if (!gameSession || !gameSession.questions || !gameSession.teams) return;
+
+  if (gameSession.questionTimeout) {
+    clearTimeout(gameSession.questionTimeout);
+    gameSession.questionTimeout = undefined;
+  }
 
   const currentIndex = gameSession.currentQuestionIndex ?? 0;
   const currentQuestion = gameSession.questions[currentIndex];

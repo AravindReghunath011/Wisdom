@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'wouter';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -67,6 +67,7 @@ export default function TeamBattleGame() {
   const { toast } = useToast();
   
   const [gameState, setGameState] = useState<GameState>({ phase: 'waiting' });
+  const gameStateRef = useRef<GameState>(gameState);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [hasSubmitted, setHasSubmitted] = useState(false);
   const [teamAnswer, setTeamAnswer] = useState<string | null>(null);
@@ -79,6 +80,16 @@ export default function TeamBattleGame() {
   const [lastRoundCorrect, setLastRoundCorrect] = useState<boolean | null>(null);
   const [soundEnabled, setSoundEnabled] = useState<boolean>(() => isSoundEnabled());
   const [voiceEnabled, setVoiceEnabled] = useState<boolean>(() => isVoiceEnabled());
+
+  useEffect(() => {
+    gameStateRef.current = gameState;
+  }, [gameState]);
+
+  useEffect(() => {
+    if (lastRoundCorrect !== null) {
+      setShowRoundFeedback(true);
+    }
+  }, [lastRoundCorrect]);
 
   // Get game session ID from URL
   const search = typeof window !== 'undefined' ? window.location.search : '';
@@ -134,7 +145,7 @@ export default function TeamBattleGame() {
               currentQuestion: data.question,
               questionNumber: data.questionNumber,
               totalQuestions: data.totalQuestions,
-              timeRemaining: data.timeLimit || 30
+              timeRemaining: data.timeLimit || 15
             }));
             setSelectedAnswer(null);
             setHasSubmitted(false);
@@ -143,7 +154,6 @@ export default function TeamBattleGame() {
             setSuggestions({});
             setWaitingForResults(false);
             setCorrectAnswerId(null);
-            setShowRoundFeedback(false);
             setLastRoundCorrect(null);
             break;
 
@@ -206,7 +216,17 @@ export default function TeamBattleGame() {
             const correctId: string | null = data.correctAnswer?.id || null;
             setCorrectAnswerId(correctId);
 
-            let roundCorrect: boolean | null = null;
+            const resolvedPlayerTeamId =
+              gameStateRef.current.playerTeam?.id ||
+              gameStateRef.current.teams?.find(team =>
+                team.members.some(member => member.userId === user?.id)
+              )?.id;
+            const playerTeamResult = data.teamResults?.find(
+              (r: any) => r.teamId === resolvedPlayerTeamId
+            );
+            const roundCorrect = !!playerTeamResult?.correct;
+            setLastRoundCorrect(roundCorrect);
+            console.log('Team answer was', roundCorrect ? 'CORRECT' : 'INCORRECT');
 
             setGameState(prev => {
               let updatedTeams = prev.teams;
@@ -227,15 +247,6 @@ export default function TeamBattleGame() {
                 team => team.id !== playerTeam?.id
               );
 
-              if (data.teamResults && playerTeam) {
-                const playerTeamResult = data.teamResults.find(
-                  (r: any) => r.teamId === playerTeam.id
-                );
-                if (playerTeamResult) {
-                  roundCorrect = !!playerTeamResult.correct;
-                }
-              }
-
               return {
                 ...prev,
                 teams: updatedTeams,
@@ -243,10 +254,6 @@ export default function TeamBattleGame() {
                 opposingTeam: opposingTeam || prev.opposingTeam,
               };
             });
-            setLastRoundCorrect(roundCorrect === true);
-            console.log('Team answer was', roundCorrect ? 'CORRECT' : 'INCORRECT');
-
-            setShowRoundFeedback(true);
 
             break;
           }
@@ -632,7 +639,8 @@ export default function TeamBattleGame() {
   const showFeedbackModal =
     showRoundFeedback &&
     gameState.currentQuestion &&
-    correctAnswerId !== null;
+    correctAnswerId !== null &&
+    lastRoundCorrect !== null;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-black via-primary-dark to-black text-white relative">
@@ -651,7 +659,7 @@ export default function TeamBattleGame() {
 
       {showFeedbackModal && gameState.currentQuestion && (
         <FeedbackModal
-          isCorrect={lastRoundCorrect === true}
+          isCorrect={lastRoundCorrect == true}
           question={gameState.currentQuestion.text}
           correctAnswer={
             gameState.currentQuestion.answers.find(
@@ -663,7 +671,11 @@ export default function TeamBattleGame() {
               ? 'Amen! That\'s correct! Wonderful teamwork.'
               : 'A brave attempt, but fear not, for wisdom grows with each question.'
           }
-          onClose={() => setShowRoundFeedback(false)}
+          onClose={() => {
+            setShowRoundFeedback(false);
+            setLastRoundCorrect(null);
+            setCorrectAnswerId(null);
+          }}
         />
       )}
     </div>

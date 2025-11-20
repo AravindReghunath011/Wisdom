@@ -232,11 +232,11 @@ const TeamBattleQuestionBoard: React.FC<TeamBattleQuestionBoardProps> = ({
                 </div>
 
                 {answerSuggestions.length > 0 && (
-                  <div className="flex flex-wrap gap-1 mt-1">
+                  <div className="absolute top-3 right-4 flex flex-wrap gap-2">
                     {answerSuggestions.map((s) => (
                       <span
                         key={s.userId}
-                        className="px-2 py-0.5 text-xs rounded-full bg-white/10 border border-accent text-accent-light"
+                        className="px-3 py-1 text-sm rounded-full bg-gradient-to-r from-blue-500 to-blue-700 text-white font-semibold shadow-lg"
                       >
                         {s.username}
                       </span>
